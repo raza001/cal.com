@@ -1,7 +1,8 @@
-import type { GlobalCal } from "./src/embed";
+import type { GlobalCal, EmbedEvent } from "./src/embed";
 
 const Cal = window.Cal as GlobalCal;
-const callback = function (e) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const callback = function (e: any) {
   const detail = e.detail;
   console.log("Event: ", e.type, detail);
 };
@@ -26,6 +27,10 @@ const searchParams = new URL(document.URL).searchParams;
 const only = searchParams.get("only");
 const colorScheme = searchParams.get("color-scheme");
 const prerender = searchParams.get("prerender");
+
+// @ts-expect-error We haven't defined ENABLE_FUTURE_ROUTES as it is a playground specific variable.
+window.ENABLE_FUTURE_ROUTES = searchParams.get("future-routes") === "true";
+
 if (colorScheme) {
   document.documentElement.style.colorScheme = colorScheme;
 }
@@ -58,6 +63,7 @@ if (only === "all" || only === "ns:default") {
       notes: "Test Meeting",
       guests: ["janedoe@example.com", "test@example.com"],
       theme: "dark",
+      "flag.coep": "true",
     },
   });
   Cal("on", {
@@ -84,6 +90,7 @@ if (only === "all" || only === "ns:second") {
           id: "cal-booking-place-second-iframe",
         },
         theme: "auto",
+        "flag.coep": "true",
       },
     }
   );
@@ -111,6 +118,7 @@ if (only === "all" || only === "ns:third") {
           iframeAttrs: {
             id: "cal-booking-place-third-iframe",
           },
+          "flag.coep": "true",
         },
       },
     ],
@@ -161,6 +169,7 @@ if (only === "all" || only === "ns:fourth") {
           iframeAttrs: {
             id: "cal-booking-place-fourth-iframe",
           },
+          "flag.coep": "true",
         },
       },
     ],
@@ -188,6 +197,28 @@ if (only === "all" || only === "ns:fourth") {
     callback,
   });
 }
+
+if (only === "all" || only === "ns:corpTest") {
+  Cal("init", "corpTest", {
+    debug: true,
+    origin: "http://localhost:3000",
+  });
+  Cal.ns.corpTest([
+    "inline",
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    //@ts-ignore
+    {
+      elementOrSelector: "#cal-booking-place-corpTest .place",
+      calLink: "pro",
+      config: {
+        iframeAttrs: {
+          id: "cal-booking-place-corpTest-iframe",
+        },
+        "flag.coep": "false",
+      },
+    },
+  ]);
+}
 if (only === "all" || only === "ns:fifth") {
   Cal("init", "fifth", {
     debug: true,
@@ -204,6 +235,7 @@ if (only === "all" || only === "ns:fifth") {
         iframeAttrs: {
           id: "cal-booking-place-fifth-iframe",
         },
+        "flag.coep": "true",
       },
     },
   ]);
@@ -219,7 +251,7 @@ if (only === "all" || only === "prerender-test") {
     origin: origin,
   });
   Cal.ns.e2ePrerenderLightTheme("prerender", {
-    calLink: "free/30min",
+    calLink: "free/30min?flag.coep=true",
     type: "modal",
   });
 }
@@ -250,6 +282,7 @@ if (only === "all" || only === "inline-routing-form") {
         iframeAttrs: {
           id: "cal-booking-place-inline-routing-form-iframe",
         },
+        "flag.coep": "true",
       },
     },
   ]);
@@ -274,6 +307,7 @@ if (only === "all" || only === "hideEventTypeDetails") {
           iframeAttrs: {
             id: `cal-booking-place-${identifier}-iframe`,
           },
+          "flag.coep": "true",
         },
       },
     ],
@@ -404,6 +438,7 @@ if (only === "all" || only == "ns:floatingButton") {
       iframeAttrs: {
         id: "floatingtest",
       },
+      "flag.coep": "true",
       name: "John",
       email: "johndoe@gmail.com",
       notes: "Test Meeting",
@@ -431,14 +466,11 @@ if (only === "all" || only == "ns:monthView") {
         iframeAttrs: {
           id: "cal-booking-place-monthView-iframe",
         },
+        "flag.coep": "true",
         layout: "month_view",
       },
     }
   );
-  Cal.ns.monthView("on", {
-    action: "*",
-    callback,
-  });
 }
 
 if (only === "all" || only == "ns:weekView") {
@@ -459,6 +491,7 @@ if (only === "all" || only == "ns:weekView") {
         iframeAttrs: {
           id: "cal-booking-place-weekView-iframe",
         },
+        "flag.coep": "true",
         layout: "week_view",
       },
     }
@@ -487,6 +520,7 @@ if (only === "all" || only == "ns:columnView") {
         iframeAttrs: {
           id: "cal-booking-place-columnView-iframe",
         },
+        "flag.coep": "true",
         layout: "column_view",
       },
     }
@@ -496,3 +530,24 @@ if (only === "all" || only == "ns:columnView") {
     callback,
   });
 }
+
+// Verifies that the type of e.detail.data is valid. type-check will fail if we accidentally break it.
+const bookingSuccessfulV2Callback = (e: EmbedEvent<"bookingSuccessfulV2">) => {
+  const data = e.detail.data;
+  console.log("bookingSuccessfulV2", {
+    endTime: data.endTime,
+    startTime: data.startTime,
+    title: data.title,
+  });
+
+  // Remove the event listener after it is fired once
+  Cal("off", {
+    action: "bookingSuccessfulV2",
+    callback: bookingSuccessfulV2Callback,
+  });
+};
+
+Cal("on", {
+  action: "bookingSuccessfulV2",
+  callback: bookingSuccessfulV2Callback,
+});

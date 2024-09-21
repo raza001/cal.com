@@ -1,15 +1,22 @@
+import { getCalendar } from "@calcom/app-store/_utils/getCalendar";
 import { CalendarService } from "@calcom/app-store/applecalendar/lib";
 import { getBookingForReschedule } from "@calcom/features/bookings/lib/get-booking";
 import getBookingInfo from "@calcom/features/bookings/lib/getBookingInfo";
 import handleCancelBooking from "@calcom/features/bookings/lib/handleCancelBooking";
 import * as newBookingMethods from "@calcom/features/bookings/lib/handleNewBooking";
 import { getPublicEvent } from "@calcom/features/eventtypes/lib/getPublicEvent";
+import { handleCreatePhoneCall } from "@calcom/features/handleCreatePhoneCall";
+import handleMarkNoShow from "@calcom/features/handleMarkNoShow";
 import * as instantMeetingMethods from "@calcom/features/instant-meeting/handleInstantMeeting";
 import getAllUserBookings from "@calcom/lib/bookings/getAllUserBookings";
-import { symmetricEncrypt } from "@calcom/lib/crypto";
+import { symmetricEncrypt, symmetricDecrypt } from "@calcom/lib/crypto";
+import { getTranslation } from "@calcom/lib/server/i18n";
 import { updateHandler as updateScheduleHandler } from "@calcom/trpc/server/routers/viewer/availability/schedule/update.handler";
 import { getAvailableSlots } from "@calcom/trpc/server/routers/viewer/slots/util";
-import { createNewUsersConnectToOrgIfExists } from "@calcom/trpc/server/routers/viewer/teams/inviteMember/utils";
+import {
+  createNewUsersConnectToOrgIfExists,
+  sendSignupToOrganizationEmail,
+} from "@calcom/trpc/server/routers/viewer/teams/inviteMember/utils";
 
 export { slugify } from "@calcom/lib/slugify";
 export { getBookingForReschedule };
@@ -40,6 +47,9 @@ const handleNewBooking = newBookingMethods.default;
 export { handleNewBooking };
 const handleInstantMeeting = instantMeetingMethods.default;
 export { handleInstantMeeting };
+
+export { handleMarkNoShow };
+export { handleCreatePhoneCall };
 
 export { getAvailableSlots };
 export type AvailableSlotsType = Awaited<ReturnType<typeof getAvailableSlots>>;
@@ -73,7 +83,7 @@ export type { CityTimezones } from "@calcom/lib/cityTimezonesHandler";
 export { TRPCError } from "@trpc/server";
 export type { TUpdateInputSchema } from "@calcom/trpc/server/routers/viewer/availability/schedule/update.schema";
 
-export { createNewUsersConnectToOrgIfExists };
+export { createNewUsersConnectToOrgIfExists, sendSignupToOrganizationEmail };
 
 export { getAllUserBookings };
 export { getBookingInfo };
@@ -84,16 +94,42 @@ export { eventTypeBookingFields, eventTypeLocations } from "@calcom/prisma/zod-u
 export { EventTypeMetaDataSchema, userMetadata } from "@calcom/prisma/zod-utils";
 
 export {
-  transformApiEventTypeBookingFields,
-  transformApiEventTypeLocations,
-  getResponseEventTypeLocations,
-  getResponseEventTypeBookingFields,
+  // note(Lauris): Api to internal
+  transformBookingFieldsApiToInternal,
+  transformLocationsApiToInternal,
+  transformIntervalLimitsApiToInternal,
+  transformFutureBookingLimitsApiToInternal,
+  transformRecurrenceApiToInternal,
+  // note(Lauris): Internal to api
+  transformBookingFieldsInternalToApi,
+  transformLocationsInternalToApi,
+  transformIntervalLimitsInternalToApi,
+  transformFutureBookingLimitsInternalToApi,
+  transformRecurrenceInternalToApi,
+  // note(Lauris): schemas
   TransformedLocationsSchema,
   BookingFieldsSchema,
+  // note(Lauris): constants
+  systemBeforeFieldName,
+  systemBeforeFieldEmail,
+  systemBeforeFieldLocation,
+  systemAfterFieldRescheduleReason,
 } from "@calcom/lib/event-types/transformers";
+
+export type { SystemField, CustomField } from "@calcom/lib/event-types/transformers";
+
+export { parseBookingLimit } from "@calcom/lib";
 
 export { parseRecurringEvent } from "@calcom/lib/isRecurringEvent";
 export { dynamicEvent } from "@calcom/lib/defaultEvents";
 
-export { symmetricEncrypt };
+export { symmetricEncrypt, symmetricDecrypt };
 export { CalendarService };
+
+export { getCalendar };
+
+export { getTranslation };
+
+export { updateNewTeamMemberEventTypes } from "@calcom/lib/server/queries";
+
+export { ErrorCode } from "@calcom/lib/errorCodes";

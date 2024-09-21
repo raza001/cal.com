@@ -1,4 +1,5 @@
 import type { LocationObject } from "@calcom/app-store/locations";
+import { workflowSelect } from "@calcom/ee/workflows/lib/getAllWorkflows";
 import { getBookingFieldsWithSystemFields } from "@calcom/features/bookings/lib/getBookingFields";
 import { parseRecurringEvent } from "@calcom/lib";
 import prisma, { userSelect } from "@calcom/prisma";
@@ -23,6 +24,12 @@ export const getEventTypesFromDB = async (eventTypeId: number) => {
         },
       },
       slug: true,
+      profile: {
+        select: {
+          organizationId: true,
+        },
+      },
+      teamId: true,
       team: {
         select: {
           id: true,
@@ -57,8 +64,15 @@ export const getEventTypesFromDB = async (eventTypeId: number) => {
       seatsShowAvailabilityCount: true,
       bookingLimits: true,
       durationLimits: true,
+      rescheduleWithSameRoundRobinHost: true,
       assignAllTeamMembers: true,
+      isRRWeightsEnabled: true,
       parentId: true,
+      parent: {
+        select: {
+          teamId: true,
+        },
+      },
       useEventTypeDestinationCalendarEmail: true,
       owner: {
         select: {
@@ -66,11 +80,9 @@ export const getEventTypesFromDB = async (eventTypeId: number) => {
         },
       },
       workflows: {
-        include: {
+        select: {
           workflow: {
-            include: {
-              steps: true,
-            },
+            select: workflowSelect,
           },
         },
       },
@@ -87,6 +99,8 @@ export const getEventTypesFromDB = async (eventTypeId: number) => {
         select: {
           isFixed: true,
           priority: true,
+          weight: true,
+          weightAdjustment: true,
           user: {
             select: {
               credentials: {
@@ -115,13 +129,16 @@ export const getEventTypesFromDB = async (eventTypeId: number) => {
     },
   });
 
+  const { profile, ...restEventType } = eventType;
+  const isOrgTeamEvent = !!eventType?.team && !!profile?.organizationId;
+
   return {
-    ...eventType,
+    ...restEventType,
     metadata: EventTypeMetaDataSchema.parse(eventType?.metadata || {}),
     recurringEvent: parseRecurringEvent(eventType?.recurringEvent),
     customInputs: customInputSchema.array().parse(eventType?.customInputs || []),
     locations: (eventType?.locations ?? []) as LocationObject[],
-    bookingFields: getBookingFieldsWithSystemFields(eventType || {}),
+    bookingFields: getBookingFieldsWithSystemFields({ ...restEventType, isOrgTeamEvent } || {}),
     isDynamic: false,
   };
 };
