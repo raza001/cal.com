@@ -159,6 +159,21 @@ describe("OAuth Client Users Endpoints", () => {
         .expect(400);
     });
 
+    it(`should fail /POST with incorrect timeFormat`, async () => {
+      const requestBody = {
+        email: userEmail,
+        timeZone: userTimeZone,
+        name: "Alice Smith",
+        timeFormat: 100,
+      };
+
+      await request(app.getHttpServer())
+        .post(`/api/v2/oauth-clients/${oAuthClient.id}/users`)
+        .set("x-cal-secret-key", oAuthClient.secret)
+        .send(requestBody)
+        .expect(400);
+    });
+
     it(`/POST`, async () => {
       const requestBody: CreateManagedUserInput = {
         email: userEmail,
@@ -232,6 +247,30 @@ describe("OAuth Client Users Endpoints", () => {
       const schedule = scheduleId ? await schedulesRepositoryFixture.getById(scheduleId) : null;
       expect(schedule?.userId).toEqual(userId);
     }
+
+    it(`should fail /POST using already used managed user email`, async () => {
+      const requestBody: CreateManagedUserInput = {
+        email: userEmail,
+        timeZone: userTimeZone,
+        weekStart: "Monday",
+        timeFormat: 24,
+        locale: Locales.FR,
+        name: "Alice Smith",
+      };
+
+      const response = await request(app.getHttpServer())
+        .post(`/api/v2/oauth-clients/${oAuthClient.id}/users`)
+        .set("x-cal-secret-key", oAuthClient.secret)
+        .send(requestBody)
+        .expect(409);
+
+      const responseBody: CreateManagedUserOutput = response.body;
+      const error = responseBody.error;
+      expect(error).toBeDefined();
+      expect(error?.message).toEqual(
+        `User with the provided e-mail already exists. Existing user ID=${postResponseData.user.id}`
+      );
+    });
 
     it(`/GET: return list of managed users`, async () => {
       const response = await request(app.getHttpServer())
